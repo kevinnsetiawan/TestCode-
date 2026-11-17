@@ -1,58 +1,118 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Courier Master Data API (Laravel)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+REST API untuk manajemen master data **Kurir (`couriers`)** yang dibangun menggunakan Laravel 13, lengkap dengan pagination, pencarian multi-kata, filter level, pengurutan dinamis, validasi input, serta unit & feature test.
 
-## About Laravel
+## Struktur Tabel `couriers`
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| Kolom | Tipe | Keterangan |
+| :--- | :--- | :--- |
+| `id` | `bigint` (PK) | Primary key |
+| `code` | `varchar(32)` (Unique) | Kode unik kurir (contoh: `KUR-0001`) |
+| `name` | `varchar(255)` (Index) | Nama lengkap kurir |
+| `email` | `varchar(255)` (Unique) | Email kurir |
+| `phone` | `varchar(25)` (Unique) | Nomor telepon kurir |
+| `level` | `tinyint unsigned` (Index) | Level kurir (`1` sampai `5`, default `1`) |
+| `vehicle_type` | `varchar(30)` | Jenis kendaraan (`bicycle`, `motorcycle`, `car`, `van`, `truck`) |
+| `license_plate` | `varchar(20)` (Nullable) | Nomor polisi kendaraan |
+| `service_area` | `varchar(100)` (Nullable, Index) | Area layanan kurir |
+| `status` | `varchar(20)` (Index) | Status kurir (`active`, `inactive`, `on_leave`, default `active`) |
+| `registered_at` | `timestamp` (Index) | Tanggal/waktu pendaftaran kurir |
+| `created_at` | `timestamp` | Waktu pembuatan record |
+| `updated_at` | `timestamp` | Waktu pembaruan record |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Instalasi & Menjalankan Lokal
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone https://github.com/kevinnsetiawan/TestCode-.git
+cd TestCode-
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Dokumentasi API
 
-## Contributing
+Base URL: `/api/couriers`
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 1. List Couriers (`GET /api/couriers`)
 
-## Code of Conduct
+Mengembalikan daftar kurir dengan **pagination** dan **default sort berdasarkan `name` (ascending)**.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Query parameters yang didukung:
+- `page` (opsional): Nomor halaman (default `1`).
+- `per_page` (opsional): Jumlah item per halaman, `1–100` (default `15`).
+- `search` (opsional): Pencarian multi-kata case-insensitive. Contoh: `?search=budi+agung` akan cocok dengan `"Budiono Hadi Agung"`.
+- `level` (opsional): Filter berdasarkan satu atau beberapa level (`1–5`), dipisahkan koma atau array. Contoh: `?level=2,3`.
+- `sort_by` atau `sort` (opsional): Kolom pengurutan:
+  - `name` (default, urutan `asc`)
+  - `registered_at` (override default sort ke tanggal didaftarkan, default `desc`)
+- `sort_dir` atau `order` (opsional): Arah pengurutan `asc` atau `desc`.
 
-## Security Vulnerabilities
+Contoh request:
+```bash
+curl "http://localhost:8000/api/couriers?search=budi+agung&level=2,3&sort_by=registered_at&sort_dir=asc&per_page=10"
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 2. Show Courier (`GET /api/couriers/{id}`)
 
-## License
+Mengembalikan seluruh data pada kurir tertentu.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+curl "http://localhost:8000/api/couriers/1"
+```
+
+### 3. Create Courier (`POST /api/couriers`)
+
+Menyimpan kurir baru dengan validasi input lengkap (`code`, `name`, `email`, `phone`, `level` 1–5, `vehicle_type`, dll).
+
+```bash
+curl -X POST "http://localhost:8000/api/couriers" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "code": "KUR-1001",
+    "name": "Budiono Hadi Agung",
+    "email": "budiono.agung@example.com",
+    "phone": "081234567890",
+    "level": 3,
+    "vehicle_type": "motorcycle",
+    "license_plate": "B 4123 XYZ",
+    "service_area": "Jakarta Selatan",
+    "status": "active"
+  }'
+```
+
+### 4. Update Courier (`PUT/PATCH /api/couriers/{id}`)
+
+Memperbarui data kurir dengan validasi input lengkap (termasuk pengecualian unique untuk record yang sedang di-update).
+
+```bash
+curl -X PUT "http://localhost:8000/api/couriers/1" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "level": 4,
+    "service_area": "Jakarta Pusat"
+  }'
+```
+
+### 5. Delete Courier (`DELETE /api/couriers/{id}`)
+
+Menghapus data kurir dari database.
+
+```bash
+curl -X DELETE "http://localhost:8000/api/couriers/1" \
+  -H "Accept: application/json"
+```
+
+## Menjalankan Test
+
+```bash
+php artisan test
+```
+
+Test mencakup:
+- **Unit Tests** (`tests/Unit/CourierModelTest.php`): default `registered_at` & `status`, casts, `scopeSearch`, `scopeLevels`, dan `scopeSortedBy`.
+- **Feature Tests** (`tests/Feature/CourierApiTest.php`): `index` (pagination, default sort by `name`, override sort `registered_at`, multi-word `?search=budi+agung`, filter `?level=2,3`), `show`, `store` (validasi + `assertDatabaseHas`), `update` (validasi + `assertDatabaseHas`), dan `destroy` (`assertDatabaseMissing`).
